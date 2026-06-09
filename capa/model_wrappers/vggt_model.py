@@ -52,13 +52,34 @@ class VGGTModel(BaseModel):
         Returns:
             depth_bhw: [B, H, W]
         """
-        B, _, H, W = rgb_b3hw.shape
+        _, _, height, width = rgb_b3hw.shape
+        rgb_processed = self.preprocess_inputs(rgb_b3hw)
+        return self.predict_depth_from_processed(
+            rgb_processed,
+            output_size=(height, width),
+        )
+
+    def preprocess_inputs(self, rgb_b3hw: torch.Tensor) -> torch.Tensor:
+        """Preprocess VGGT input images once before optimization."""
+        return self._process_images(rgb_b3hw.to(self.device))
+
+    def predict_depth_from_processed(
+        self,
+        rgb_processed_b3hw: torch.Tensor,
+        output_size: tuple[int, int],
+    ) -> torch.Tensor:
+        """
+        Run VGGT depth prediction from cached preprocessed images.
+
+        Args:
+            rgb_processed_b3hw: Preprocessed RGB images [B, 3, h, w].
+            output_size: Original output depth size as (height, width).
+
+        Returns:
+            depth_bhw: [B, H, W].
+        """
         base = self._base_model
-
-        rgb_processed = self._process_images(rgb_b3hw)
-        _, _, h_in, w_in = rgb_processed.shape
-
-        images = rgb_processed.unsqueeze(0)  # [1, B, 3, h_in, w_in]
+        images = rgb_processed_b3hw.unsqueeze(0)
 
         use_prompt = self._tuning_mode == "vpt"
 
@@ -75,7 +96,7 @@ class VGGTModel(BaseModel):
         depth_bhw = depth_map.squeeze(0).squeeze(-1)  # [B, h_out, w_out]
         depth_bhw = resize(
             depth_bhw.unsqueeze(1),
-            size=(H, W),
+            size=output_size,
             interpolation=InterpolationMode.BILINEAR,
         ).squeeze(1)  # [B, H, W]
 

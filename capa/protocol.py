@@ -135,6 +135,12 @@ class CAPAProtocol:
             lr_scheduler_cls = getattr(torch.optim.lr_scheduler, self.lr_scheduler_cfg["type"])
             lr_scheduler = lr_scheduler_cls(optimizer, **self.lr_scheduler_cfg["kwargs"])
 
+        preprocess_inputs = getattr(self.model, "preprocess_inputs", None)
+        predict_depth_from_processed = getattr(self.model, "predict_depth_from_processed", None)
+        rgb_processed_n3hw = None
+        if callable(preprocess_inputs) and callable(predict_depth_from_processed):
+            rgb_processed_n3hw = preprocess_inputs(rgb_n3hw.contiguous().to(device))
+
         # --- 3. Optimization loop ---
         frame_sampling_rng = torch.Generator(device="cpu").manual_seed(self.align_seed)
 
@@ -166,14 +172,23 @@ class CAPAProtocol:
             loss_accum = 0.0
 
             for sub_idxs in sub_batches:
-                rgb_sub = rgb_n3hw[sub_idxs].contiguous().to(device)
+                if rgb_processed_n3hw is None:
+                    rgb_sub = rgb_n3hw[sub_idxs].contiguous().to(device)
+                else:
+                    rgb_sub = rgb_processed_n3hw[sub_idxs].clone().contiguous()
                 depth_cond_sub = depth_cond_nhw[sub_idxs].contiguous().to(device)
                 mask_cond_sub = mask_cond_nhw[sub_idxs].contiguous().to(device)
 
                 grad_ctx = torch.no_grad() if is_last_step else torch.enable_grad()
 
                 with grad_ctx:
-                    depth_pred_sub = self.model.predict_depth(rgb_sub)
+                    if rgb_processed_n3hw is None:
+                        depth_pred_sub = self.model.predict_depth(rgb_sub)
+                    else:
+                        depth_pred_sub = predict_depth_from_processed(
+                            rgb_sub,
+                            output_size=(H, W),
+                        )
 
                 if torch.any(torch.isnan(depth_pred_sub)):
                     return None

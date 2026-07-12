@@ -114,6 +114,14 @@ venv/
 input/
 output/
 
+# Private/local dataset identifiers. These patterns are intentionally
+# case-insensitive and apply at any directory depth, so private paths are
+# excluded before they can be staged accidentally.
+**/*[Tt][Oo][Mm][Aa][Tt][Oo]*
+**/*[Ss][Tt][Ee][Mm]*
+**/*[Ii][Nn][Aa][Hh][Oo]*
+**/*[Tt][Mm][Tt]4*
+
 # Local secrets and OS metadata
 .env
 .env.*

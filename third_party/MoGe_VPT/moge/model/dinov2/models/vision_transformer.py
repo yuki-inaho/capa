@@ -207,7 +207,9 @@ class DinoVisionTransformer(nn.Module):
             torch.nn.init.kaiming_normal_(self.prompt_tokens)
         elif "load" == init_method_pref:
             load_path = "_".join(init_method.split("_")[1:])
-            loaded = torch.load(load_path, map_location=self.cls_token.device, weights_only=True)["prompt_tokens"]
+            # The bundled VPT checkpoint uses the legacy serialized format;
+            # explicitly allow it for this trusted local asset on PyTorch 2.6+.
+            loaded = torch.load(load_path, map_location=self.cls_token.device, weights_only=False)["prompt_tokens"]
             assert loaded.shape == self.prompt_tokens.shape, f"Loaded tokens have unexpected shape ({loaded.shape}), expected {self.prompt_tokens.shape}"
             self.prompt_tokens = nn.Parameter(loaded)
         else:

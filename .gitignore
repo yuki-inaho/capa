@@ -101,6 +101,25 @@ StyleCopReport.xml
 # Chutzpah Test files
 _Chutzpah*
 
+# Python / uv local environments and generated artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local sample inputs and inference outputs (often large)
+input/
+output/
+
+# Local secrets and OS metadata
+.env
+.env.*
+!.env.example
+.DS_Store
+
 # Visual C++ cache files
 ipch/
 *.aps
